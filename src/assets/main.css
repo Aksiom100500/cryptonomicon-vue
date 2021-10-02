@@ -1,0 +1,73 @@
+body {
+  @apply text-sm font-medium text-gray-700;
+}
+hr {
+  @apply border-gray-600 my-4;
+}
+.cryptonomicon {
+  @apply container mx-auto flex flex-col items-center bg-gray-100 p-4;
+}
+.spiner-wrapper {
+  @apply fixed w-full h-full opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center;
+}
+.spiner {
+  @apply animate-spin -ml-1 mr-3 h-12 w-12 text-white;
+}
+.add-btn {
+  @apply my-4 inline-flex items-center py-2 px-4 border border-transparent
+    shadow-sm text-sm leading-4  rounded-full text-white bg-gray-600
+    hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2
+    focus:ring-offset-2 focus:ring-gray-500;
+}
+.ticker-input {
+  @apply block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none
+  focus:ring-gray-500 focus:border-gray-500 rounded-md;
+}
+.ticker-input-wrapper {
+  @apply mt-1 relative rounded-md shadow-md;
+}
+.ticker-options {
+  @apply flex bg-white p-1 rounded-md shadow-md flex-wrap;
+}
+.ticker-options span {
+  @apply inline-flex items-center px-2 m-1 rounded-md text-xs bg-gray-300 text-gray-800 cursor-pointer;
+}
+.tickers-wrapper {
+  @apply mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3;
+}
+.tickers-item {
+  @apply bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer;
+}
+.tickers-item--data_wrapper {
+  @apply px-4 py-5 sm:p-6 text-center;
+}
+.tickers-item--name {
+  @apply text-gray-500 truncate;
+}
+.tickers-item--price {
+  @apply mt-1 text-3xl font-semibold text-gray-900;
+}
+.tickers-item-button {
+  @apply flex items-center justify-center w-full bg-gray-100 px-4 py-4 sm:px-6 text-base text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none;
+}
+.notice {
+  @apply text-sm text-red-600;
+}
+.graph {
+  @apply relative;
+}
+.graph h3 {
+  @apply text-lg leading-6 text-gray-900 my-8;
+}
+.graph button {
+  @apply absolute top-0 right-0;
+}
+.graph-line-wrapper {
+  @apply flex items-end border-gray-600 border-b border-l h-64;
+}
+.graph-line {
+  @apply bg-purple-800 border w-10;
+}
+.hidden {
+  display: none;
+}
