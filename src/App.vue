@@ -35,7 +35,6 @@
             <div class="ticker-input-wrapper">
               <input
                 v-model="ticker"
-                @keydown.stop="listenChange"
                 @keydown.enter="add"
                 type="text"
                 name="wallet"
@@ -44,15 +43,19 @@
                 placeholder="Например DOGE"
               />
             </div>
-            <div class="ticker-options">
-              <span v-for="item in tickerGuesses" :key="item">
-                {{ item.symbol }}
+            <div v-if="tickerGuesses.length > 0" class="ticker-options">
+              <span
+                v-for="item in tickerGuesses"
+                :key="item"
+                @click="selectTickerGuess(item)"
+              >
+                {{ item }}
               </span>
             </div>
             <div class="notice" v-if="error">{{ error }}</div>
           </div>
         </div>
-        <button v-on:click="add" type="button" class="add-btn">
+        <button @click="add" type="button" class="add-btn">
           <!-- Heroicon name: solid/mail -->
           <svg
             class="-ml-0.5 mr-2 h-6 w-6"
@@ -69,15 +72,15 @@
           Добавить
         </button>
       </section>
-      <template v-if="Object.keys(tickers).length > 0">
+      <template v-if="Object.keys(selectedCoins).length > 0">
         <hr />
         <dl class="tickers-wrapper">
           <div
-            v-for="item in tickers"
+            v-for="item in selectedCoins"
             :key="item"
             @click="select(item)"
             :class="{
-              'border-4': selected == item,
+              'border-4': selected === item,
             }"
             class="tickers-item"
           >
@@ -154,15 +157,16 @@ export default {
 
   data() {
     return {
-      selected: null,
-      coins: null,
+      coins: {},
       coinsDictionaryStr: [],
-      error: null,
-      ticker: "",
-      tickerNormalized: "",
-      tickers: { BTC: { symbol: "BTC", price: "-" } },
       tickerGuesses: [],
+      selectedCoins: {},
       graph: [],
+      ticker: "",
+      tickerObj: null,
+      selected: null,
+      error: null,
+      tickerNormal: "",
       cryptocompare_key:
         "46713c785b9eafe108d9fa4ee5ca0e81ba1da74852ffc152b3bda86276e51d25",
     };
@@ -170,35 +174,51 @@ export default {
   created() {
     this.getAllTickers();
   },
+  watch: {
+    ticker: "listenChange",
+  },
   methods: {
     add() {
       try {
+        this.normalizeTicker();
         this.validate();
-        this.addTicker();
-        const ticker = this.tickers[this.tickerNormalized];
-        this.setGraph(ticker);
-        this.removeTicker();
-        this.removeErrors();
+        this.selectedCoins[this.tickerNormal] = this.coins[this.tickerNormal];
+        this.setGraph(this.ticker);
+        this.clear("ticker");
       } catch (e) {
         this.error = e;
       }
     },
     listenChange() {
-      this.setTicker();
+      this.normalizeTicker();
       this.setGuesses();
+      this.clear("error");
     },
-    setTicker() {
-      this.tickerNormalized = this.ticker.toUpperCase();
+    normalizeTicker() {
+      this.tickerNormal = this.ticker.toUpperCase();
     },
-    removeTicker() {
-      this.ticker = "";
-      this.tickerNormalized = "";
+    clear(variable) {
+      this[variable] = null;
     },
-    addTicker() {
-      this.tickers[this.tickerNormalized] = this.coins[this.tickerNormalized];
+    select(ticker) {
+      this.selected = ticker;
+      this.tickerObj = this.selectedCoins[ticker.symbol];
+      this.graph = this.tickerObj.graph;
     },
-    removeErrors() {
-      this.error = null;
+    handleDelete(ticker) {
+      delete this.selectedCoins[ticker.symbol];
+      this.selected = null;
+    },
+    validate() {
+      if (!(this.tickerNormal in this.coins)) {
+        throw "Такого тікера немає в базі данних";
+      } else if (this.tickerNormal in this.selectedCoins) {
+        throw `${this.tickerNormal} уже добавлен`;
+      } else if (this.tickerNormal === "") {
+        throw `Введіть тікер криптовалюти`;
+      } else {
+        this.clear("error");
+      }
     },
     setGuesses() {
       let regex = new RegExp(
@@ -207,46 +227,29 @@ export default {
       );
       let results = this.coinsDictionaryStr.matchAll(regex);
       this.tickerGuesses = [];
-      console.log(this.ticker);
       for (let result of results) {
         let { coins } = result.groups;
         if (this.tickerGuesses.length >= 4) break;
         this.tickerGuesses.push(coins);
       }
-      console.log(this.tickerGuesses);
+    },
+    selectTickerGuess(ticker) {
+      this.ticker = this.coins[ticker].symbol;
     },
     setGraph(currentTicker) {
-      setInterval(() => {
+      currentTicker.renew = setInterval(async () => {
         const symbol = currentTicker.symbol;
-        const cost = this.getTickerPrice(symbol);
-        this.tickers[symbol].price = cost;
+        const cost = await this.getTickerPrice(symbol);
+        currentTicker.price = cost;
         if (this.selected?.symbol === symbol) {
-          this.graph.push(cost);
+          currentTicker.graph.push(cost);
         }
       }, 5000);
     },
-    handleDelete(tickerToRemove) {
-      delete this.tickers[tickerToRemove];
-    },
-    validate() {
-      if (!(this.tickerNormalized in this.coins)) {
-        throw "Такого тікера немає в базі данних";
-      }
-      if (this.tickerNormalized in this.tickers) {
-        throw `${this.tickerNormalized} уже добавлен`;
-      }
-      if (this.tickerNormalized === "") {
-        throw `Введіть тікер криптовалюти`;
-      }
-    },
-    select(ticker) {
-      this.selected = ticker;
-      this.graph = [];
-    },
     normalizeGraph() {
-      const maxValue = Math.max(...this.graph);
-      const minValue = Math.min(...this.graph);
-      return this.graph.map(
+      const maxValue = Math.max(...this.tickerObj.graph);
+      const minValue = Math.min(...this.tickerObj.graph);
+      return this.tickerObj.graph.map(
         (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
       );
     },
@@ -266,7 +269,7 @@ export default {
       f = await f.json();
       this.coins = f["Data"];
       this.coinsDictionaryStr = Object.keys(this.coins).join(",");
-      // const a = this.coinsDictionaryStr.match(/(?<=,)(\w?btc.*?)(?=,)/gi);
+      this.setGuesses();
     },
   },
 };
