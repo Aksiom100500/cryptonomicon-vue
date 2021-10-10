@@ -1,24 +1,13 @@
 <template>
-  <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
+  <div class="cryptonomicon">
     <div
+      class="spiner-wrapper"
       :class="{
-        hidden: coins,
+        hidden: allTickers,
       }"
-      class="
-        fixed
-        w-100
-        h-100
-        opacity-80
-        bg-purple-800
-        inset-0
-        z-50
-        flex
-        items-center
-        justify-center
-      "
     >
       <svg
-        class="animate-spin -ml-1 mr-3 h-12 w-12 text-white"
+        class="spiner"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -42,126 +31,31 @@
       <section>
         <div class="flex">
           <div class="max-w-xs">
-            <label for="wallet" class="block text-sm font-medium text-gray-700"
-              >Тикер</label
-            >
-            <div class="mt-1 relative rounded-md shadow-md">
+            <label for="wallet">Тикер</label>
+            <div class="ticker-input-wrapper">
               <input
                 v-model="ticker"
-                v-on:keydown.enter="add"
+                @keydown.enter="add"
                 type="text"
                 name="wallet"
                 id="wallet"
-                class="
-                  block
-                  w-full
-                  pr-10
-                  border-gray-300
-                  text-gray-900
-                  focus:outline-none focus:ring-gray-500 focus:border-gray-500
-                  sm:text-sm
-                  rounded-md
-                "
+                class="ticker-input"
                 placeholder="Например DOGE"
               />
             </div>
-            <div
-              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
-            >
+            <div v-if="tickerGuesses.length > 0" class="ticker-options">
               <span
-                class="
-                  inline-flex
-                  items-center
-                  px-2
-                  m-1
-                  rounded-md
-                  text-xs
-                  font-medium
-                  bg-gray-300
-                  text-gray-800
-                  cursor-pointer
-                "
+                v-for="item in tickerGuesses"
+                :key="item"
+                @click="ticker = item"
               >
-                BTC
-              </span>
-              <span
-                class="
-                  inline-flex
-                  items-center
-                  px-2
-                  m-1
-                  rounded-md
-                  text-xs
-                  font-medium
-                  bg-gray-300
-                  text-gray-800
-                  cursor-pointer
-                "
-              >
-                DOGE
-              </span>
-              <span
-                class="
-                  inline-flex
-                  items-center
-                  px-2
-                  m-1
-                  rounded-md
-                  text-xs
-                  font-medium
-                  bg-gray-300
-                  text-gray-800
-                  cursor-pointer
-                "
-              >
-                BCH
-              </span>
-              <span
-                class="
-                  inline-flex
-                  items-center
-                  px-2
-                  m-1
-                  rounded-md
-                  text-xs
-                  font-medium
-                  bg-gray-300
-                  text-gray-800
-                  cursor-pointer
-                "
-              >
-                CHD
+                {{ item }}
               </span>
             </div>
-            <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
+            <div class="notice" v-if="error">{{ error }}</div>
           </div>
         </div>
-        <button
-          v-on:click="add"
-          type="button"
-          class="
-            my-4
-            inline-flex
-            items-center
-            py-2
-            px-4
-            border border-transparent
-            shadow-sm
-            text-sm
-            leading-4
-            font-medium
-            rounded-full
-            text-white
-            bg-gray-600
-            hover:bg-gray-700
-            transition-colors
-            duration-300
-            focus:outline-none
-            focus:ring-2
-            focus:ring-offset-2
-            focus:ring-gray-500
-          "
-        >
+        <button @click="add" type="button" class="add-btn">
           <!-- Heroicon name: solid/mail -->
           <svg
             class="-ml-0.5 mr-2 h-6 w-6"
@@ -178,51 +72,27 @@
           Добавить
         </button>
       </section>
-      <template v-if="tickers.length > 0">
-        <hr class="w-full border-t border-gray-600 my-4" />
-        <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <template v-if="Object.keys(selectedCoins).length > 0">
+        <hr />
+        <dl class="tickers-wrapper">
           <div
-            v-for="item in tickers"
+            v-for="item in selectedCoins"
             :key="item"
             @click="select(item)"
             :class="{
-              'border-4': selected == item,
+              'border-4': currentTicker === item,
             }"
-            class="
-              bg-white
-              overflow-hidden
-              shadow
-              rounded-lg
-              border-purple-800 border-solid
-              cursor-pointer
-            "
+            class="tickers-item"
           >
-            <div class="px-4 py-5 sm:p-6 text-center">
-              <dt class="text-sm font-medium text-gray-500 truncate">
-                {{ item.name }} - USD
-              </dt>
-              <dd class="mt-1 text-3xl font-semibold text-gray-900">
+            <div class="tickers-item--data_wrapper">
+              <dt class="tickers-item--name">{{ item.symbol }} - USD</dt>
+              <dd class="tickers-item--price">
                 {{ item.price }}
               </dd>
             </div>
-            <div class="w-full border-t border-gray-200"></div>
             <button
               @click.stop="handleDelete(item)"
-              class="
-                flex
-                items-center
-                justify-center
-                font-medium
-                w-full
-                bg-gray-100
-                px-4
-                py-4
-                sm:px-6
-                text-md text-gray-500
-                hover:text-gray-600 hover:bg-gray-200 hover:opacity-20
-                transition-all
-                focus:outline-none
-              "
+              class="tickers-item-button"
             >
               <svg
                 class="h-5 w-5"
@@ -241,25 +111,19 @@
             </button>
           </div>
         </dl>
-        <hr class="w-full border-t border-gray-600 my-4" />
+        <hr />
       </template>
-      <section class="relative" v-if="selected">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ selected.name }} - USD
-        </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
+      <section class="graph" v-if="currentTicker">
+        <h3>{{ currentTicker.symbol }} - USD</h3>
+        <div class="graph-line-wrapper">
           <div
             v-for="(line, idx) in normalizeGraph()"
             :key="idx"
             :style="{ height: `${line}%` }"
-            class="bg-purple-800 border w-10"
+            class="graph-line"
           ></div>
         </div>
-        <button
-          @click="selected = null"
-          type="button"
-          class="absolute top-0 right-0"
-        >
+        <button @click="currentTicker = null" type="button">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -293,46 +157,83 @@ export default {
 
   data() {
     return {
-      ticker: "",
-      tickers: [{ name: "BTC", price: "-" }],
-      selected: null,
+      allTickers: {},
+      coinsDictionaryStr: [],
+      tickerGuesses: [],
+      selectedCoins: {},
       graph: [],
-      coins: null,
+      ticker: "",
+      currentTicker: null,
+      selected: null,
+      error: "",
+      tickerNormal: "",
+      cryptocompare_key:
+        "46713c785b9eafe108d9fa4ee5ca0e81ba1da74852ffc152b3bda86276e51d25",
     };
   },
-  async created() {
-    const f = await fetch(
-      "https://min-api.cryptocompare.com/data/blockchain/list?api_key=46713c785b9eafe108d9fa4ee5ca0e81ba1da74852ffc152b3bda86276e51d25"
-    );
-    this.coins = await f.json();
+  created() {
+    this.getAllTickers();
+    this.setPriceGetter();
+  },
+  watch: {
+    ticker: "listenChange",
   },
   methods: {
+    listenChange() {
+      this.tickerNormal = this.ticker.toUpperCase();
+      this.setGuesses();
+      this.clear("error");
+    },
     add() {
-      const currentTicker = {
-        name: this.ticker,
-        price: "-",
-      };
-      this.tickers.push(currentTicker);
-      setInterval(async () => {
-        const f = await fetch(
-          `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=46713c785b9eafe108d9fa4ee5ca0e81ba1da74852ffc152b3bda86276e51d25`
-        );
-        const data = await f.json();
-        let usd = data.USD;
-        this.tickers.find((t) => t.name == currentTicker.name).price =
-          usd > 1 ? usd.toFixed(2) : usd.toPrecision(2);
-        if (this.selected?.name == currentTicker.name) {
-          this.graph.push(usd);
-        }
-      }, 5000);
-      this.ticker = "";
+      try {
+        this.validate();
+        let currentTicker = (this.selectedCoins[this.tickerNormal] =
+          this.defineTicker());
+        currentTicker.price = 0;
+        this.select(currentTicker);
+        this.clear("ticker");
+      } catch (e) {
+        this.error = e;
+      }
+    },
+    clear(variable) {
+      this[variable] = "";
     },
     select(ticker) {
-      this.selected = ticker;
+      this.currentTicker = ticker;
       this.graph = [];
     },
-    handleDelete(tickerToRemove) {
-      this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
+    defineTicker() {
+      return this.allTickers[this.tickerNormal];
+    },
+    handleDelete(ticker) {
+      clearInterval(this.selectedCoins[ticker.symbol].renew);
+      delete this.selectedCoins[ticker.symbol];
+    },
+    validate() {
+      if (!(this.tickerNormal in this.allTickers)) {
+        throw "Такого тікера немає в базі данних";
+      } else if (this.tickerNormal in this.selectedCoins) {
+        throw `${this.tickerNormal} уже добавлен`;
+      } else if (this.tickerNormal === "") {
+        throw `Введіть тікер криптовалюти`;
+      } else {
+        this.clear("error");
+      }
+    },
+    setPriceGetter() {
+      setInterval(async () => {
+        if (this.currentTicker === null) {
+          return false;
+        } else {
+          const symbol = this.currentTicker.symbol;
+          const cost = await this.getTickerPrice(symbol);
+          this.currentTicker.price = cost;
+          if (this.currentTicker?.symbol === symbol) {
+            this.graph.push(cost);
+          }
+        }
+      }, 5000);
     },
     normalizeGraph() {
       const maxValue = Math.max(...this.graph);
@@ -340,6 +241,37 @@ export default {
       return this.graph.map(
         (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
       );
+    },
+    setGuesses() {
+      let regex = new RegExp(
+        `(,|^)(?<tickers>[A-Z0-9]*?${this.ticker}.*?(?=,))`,
+        "gim"
+      );
+      let results = this.coinsDictionaryStr.matchAll(regex);
+      this.tickerGuesses = [];
+      for (let result of results) {
+        let { tickers } = result.groups;
+        if (this.tickerGuesses.length >= 4) break;
+        this.tickerGuesses.push(tickers);
+      }
+    },
+    async getTickerPrice(symbol, currency = "USD") {
+      const f = await fetch(
+        `https://min-api.cryptocompare.com/data/price?fsym=${symbol}&tsyms=${currency}&api_key=${this.cryptocompare_key}`
+      );
+      let cost = await f.json();
+      cost = cost[currency];
+      cost = cost > 1 ? cost.toFixed(2) : cost.toPrecision(2);
+      return cost;
+    },
+    async getAllTickers() {
+      let f = await fetch(
+        `https://min-api.cryptocompare.com/data/blockchain/list?api_key=${this.cryptocompare_key}`
+      );
+      f = await f.json();
+      this.allTickers = f["Data"];
+      this.coinsDictionaryStr = Object.keys(this.allTickers).join(",");
+      this.setGuesses();
     },
   },
 };
