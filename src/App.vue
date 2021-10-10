@@ -173,6 +173,7 @@ export default {
   },
   created() {
     this.getAllTickers();
+    this.setPriceGetter();
   },
   watch: {
     ticker: "listenChange",
@@ -189,10 +190,7 @@ export default {
         let currentTicker = (this.selectedCoins[this.tickerNormal] =
           this.defineTicker());
         currentTicker.price = 0;
-        currentTicker.graph = [];
-        currentTicker.renew = null;
         this.select(currentTicker);
-        this.setGraph();
         this.clear("ticker");
       } catch (e) {
         this.error = e;
@@ -203,8 +201,7 @@ export default {
     },
     select(ticker) {
       this.currentTicker = ticker;
-      console.log(this.currentTicker);
-      this.graph = this.normalizeGraph(this.currentTicker.graph);
+      this.graph = [];
     },
     defineTicker() {
       return this.allTickers[this.tickerNormal];
@@ -224,20 +221,19 @@ export default {
         this.clear("error");
       }
     },
-    setGraph() {
-      this.currentTicker.renew = setInterval(
-        async (ticker) => {
-          const symbol = ticker.symbol;
+    setPriceGetter() {
+      setInterval(async () => {
+        if (this.currentTicker === null) {
+          return false;
+        } else {
+          const symbol = this.currentTicker.symbol;
           const cost = await this.getTickerPrice(symbol);
-          ticker.price = cost;
-          ticker.graph.push(cost);
-          if (this.ticker?.symbol === symbol) {
-            this.graph = ticker.graph;
+          this.currentTicker.price = cost;
+          if (this.currentTicker?.symbol === symbol) {
+            this.graph.push(cost);
           }
-        },
-        5000,
-        this.currentTicker
-      );
+        }
+      }, 5000);
     },
     normalizeGraph() {
       const maxValue = Math.max(...this.graph);
