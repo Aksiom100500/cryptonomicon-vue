@@ -3,7 +3,7 @@
     <div
       class="spiner-wrapper"
       :class="{
-        hidden: coins,
+        hidden: allTickers,
       }"
     >
       <svg
@@ -47,7 +47,7 @@
               <span
                 v-for="item in tickerGuesses"
                 :key="item"
-                @click="selectTickerGuess(item)"
+                @click="ticker = item"
               >
                 {{ item }}
               </span>
@@ -80,7 +80,7 @@
             :key="item"
             @click="select(item)"
             :class="{
-              'border-4': selected === item,
+              'border-4': currentTicker === item,
             }"
             class="tickers-item"
           >
@@ -113,8 +113,8 @@
         </dl>
         <hr />
       </template>
-      <section class="graph" v-if="selected">
-        <h3>{{ selected.name }} - USD</h3>
+      <section class="graph" v-if="currentTicker">
+        <h3>{{ currentTicker.symbol }} - USD</h3>
         <div class="graph-line-wrapper">
           <div
             v-for="(line, idx) in normalizeGraph()"
@@ -123,7 +123,7 @@
             class="graph-line"
           ></div>
         </div>
-        <button @click="selected = null" type="button">
+        <button @click="currentTicker = null" type="button">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -157,15 +157,15 @@ export default {
 
   data() {
     return {
-      coins: {},
+      allTickers: {},
       coinsDictionaryStr: [],
       tickerGuesses: [],
       selectedCoins: {},
       graph: [],
       ticker: "",
-      tickerObj: null,
+      currentTicker: null,
       selected: null,
-      error: null,
+      error: "",
       tickerNormal: "",
       cryptocompare_key:
         "46713c785b9eafe108d9fa4ee5ca0e81ba1da74852ffc152b3bda86276e51d25",
@@ -178,39 +178,43 @@ export default {
     ticker: "listenChange",
   },
   methods: {
+    listenChange() {
+      this.tickerNormal = this.ticker.toUpperCase();
+      this.setGuesses();
+      this.clear("error");
+    },
     add() {
       try {
-        this.normalizeTicker();
         this.validate();
-        this.selectedCoins[this.tickerNormal] = this.coins[this.tickerNormal];
-        this.setGraph(this.ticker);
+        let currentTicker = (this.selectedCoins[this.tickerNormal] =
+          this.defineTicker());
+        currentTicker.price = 0;
+        currentTicker.graph = [];
+        currentTicker.renew = null;
+        this.select(currentTicker);
+        this.setGraph();
         this.clear("ticker");
       } catch (e) {
         this.error = e;
       }
     },
-    listenChange() {
-      this.normalizeTicker();
-      this.setGuesses();
-      this.clear("error");
-    },
-    normalizeTicker() {
-      this.tickerNormal = this.ticker.toUpperCase();
-    },
     clear(variable) {
-      this[variable] = null;
+      this[variable] = "";
     },
     select(ticker) {
-      this.selected = ticker;
-      this.tickerObj = this.selectedCoins[ticker.symbol];
-      this.graph = this.tickerObj.graph;
+      this.currentTicker = ticker;
+      console.log(this.currentTicker);
+      this.graph = this.normalizeGraph(this.currentTicker.graph);
+    },
+    defineTicker() {
+      return this.allTickers[this.tickerNormal];
     },
     handleDelete(ticker) {
+      clearInterval(this.selectedCoins[ticker.symbol].renew);
       delete this.selectedCoins[ticker.symbol];
-      this.selected = null;
     },
     validate() {
-      if (!(this.tickerNormal in this.coins)) {
+      if (!(this.tickerNormal in this.allTickers)) {
         throw "Такого тікера немає в базі данних";
       } else if (this.tickerNormal in this.selectedCoins) {
         throw `${this.tickerNormal} уже добавлен`;
@@ -220,38 +224,40 @@ export default {
         this.clear("error");
       }
     },
+    setGraph() {
+      this.currentTicker.renew = setInterval(
+        async (ticker) => {
+          const symbol = ticker.symbol;
+          const cost = await this.getTickerPrice(symbol);
+          ticker.price = cost;
+          ticker.graph.push(cost);
+          if (this.ticker?.symbol === symbol) {
+            this.graph = ticker.graph;
+          }
+        },
+        5000,
+        this.currentTicker
+      );
+    },
+    normalizeGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+      return this.graph.map(
+        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+      );
+    },
     setGuesses() {
       let regex = new RegExp(
-        `(,|^)(?<coins>[A-Z0-9]*?${this.ticker}.*?(?=,))`,
+        `(,|^)(?<tickers>[A-Z0-9]*?${this.ticker}.*?(?=,))`,
         "gim"
       );
       let results = this.coinsDictionaryStr.matchAll(regex);
       this.tickerGuesses = [];
       for (let result of results) {
-        let { coins } = result.groups;
+        let { tickers } = result.groups;
         if (this.tickerGuesses.length >= 4) break;
-        this.tickerGuesses.push(coins);
+        this.tickerGuesses.push(tickers);
       }
-    },
-    selectTickerGuess(ticker) {
-      this.ticker = this.coins[ticker].symbol;
-    },
-    setGraph(currentTicker) {
-      currentTicker.renew = setInterval(async () => {
-        const symbol = currentTicker.symbol;
-        const cost = await this.getTickerPrice(symbol);
-        currentTicker.price = cost;
-        if (this.selected?.symbol === symbol) {
-          currentTicker.graph.push(cost);
-        }
-      }, 5000);
-    },
-    normalizeGraph() {
-      const maxValue = Math.max(...this.tickerObj.graph);
-      const minValue = Math.min(...this.tickerObj.graph);
-      return this.tickerObj.graph.map(
-        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
-      );
     },
     async getTickerPrice(symbol, currency = "USD") {
       const f = await fetch(
@@ -267,8 +273,8 @@ export default {
         `https://min-api.cryptocompare.com/data/blockchain/list?api_key=${this.cryptocompare_key}`
       );
       f = await f.json();
-      this.coins = f["Data"];
-      this.coinsDictionaryStr = Object.keys(this.coins).join(",");
+      this.allTickers = f["Data"];
+      this.coinsDictionaryStr = Object.keys(this.allTickers).join(",");
       this.setGuesses();
     },
   },
